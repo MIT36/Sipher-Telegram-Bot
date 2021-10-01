@@ -19,10 +19,10 @@ namespace TelegramBot
 {
     internal class TelegramServer
     {
-        private IServiceProvider serviceProvider;
+        private readonly IServiceProvider _serviceProvider;
         public TelegramServer(IServiceProvider serviceProvider)
         {
-            this.serviceProvider = serviceProvider;
+            _serviceProvider = serviceProvider;
         }
 
         public ITelegramBotClient BotClient { private set; get; }
@@ -78,7 +78,7 @@ namespace TelegramBot
 
             if (botUser == null)
             {
-                using var scope = serviceProvider.CreateScope();
+                using var scope = _serviceProvider.CreateScope();
                 var proxyService = scope.ServiceProvider.GetRequiredService<ProxyService>();
                 var goodProxy = await TryConnectWithProxies(await proxyService.GetExistingProxies()) ?? await TryConnectWithProxies(proxyService.GetProxiesFromSite());
                 if (goodProxy != null)
@@ -102,7 +102,7 @@ Message: {e?.Message?.Text}");
                 TelegramBotClient botClient = sender as TelegramBotClient;
                 if (e.Message.Type == Telegram.Bot.Types.Enums.MessageType.Text)
                 {
-                    using var scope = serviceProvider.CreateScope();
+                    using var scope = _serviceProvider.CreateScope();
                     var cmd = scope.ServiceProvider.GetRequiredService<ITextCommand>();
                     await botClient.SendTextMessageAsync(e.Message?.Chat, cmd.GetText(e.Message.Text));
                 }
