@@ -7,8 +7,8 @@ namespace TelegramBot.Services
 {
     class TextCommand : ITextCommand
     {
-        IFeistelSipher sipher;
-        public TextCommand(IFeistelSipher sipher) => this.sipher = sipher;
+        private readonly IFeistelSipher _sipher;
+        public TextCommand(IFeistelSipher sipher) => _sipher = sipher;
 
         public string GetText(string message)
         {
@@ -27,8 +27,8 @@ namespace TelegramBot.Services
                 {
                     return sipher.CryptText(message[2..].Trim(), true);
                 }*/
-                string result = sipher.CryptText(message.Trim());
-                return $"Encrypted text: {result}\r\n\r\nDecrypted Text: {sipher.CryptText(result, true)}";
+                string result = _sipher.CryptText(message.Trim());
+                return $"Encrypted text: {result}\r\n\r\nDecrypted Text: {_sipher.CryptText(result, true)}";
             }
         }
 
