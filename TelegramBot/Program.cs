@@ -36,6 +36,7 @@ namespace TelegramBot
                     .BuildServiceProvider();
                 await serviceProvider.GetRequiredService<TelegramServer>().StartAsync();
                 Console.ReadKey();
+                //test commit
             }
             catch(Exception ex)
             {
