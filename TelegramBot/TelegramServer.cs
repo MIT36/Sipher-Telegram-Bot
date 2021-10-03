@@ -1,38 +1,39 @@
-﻿using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.DependencyInjection;
 using ProxiesTelegram;
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Net;
 using System.Text;
-using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Telegram.Bot;
 using Telegram.Bot.Types;
-using TelegramBot.Services;
 using TelegramBot.Services.Interfaces;
 
 namespace TelegramBot
 {
-    internal class TelegramServer
+    internal class TelegramServer : ITelegramServer
     {
         private readonly IServiceScopeFactory _scopeFactory;
-        public TelegramServer(IServiceScopeFactory scopeFactory)
+
+        private TelegramServerOptions _options;
+
+        public TelegramServer(IServiceScopeFactory scopeFactory, TelegramServerOptions options)
         {
             _scopeFactory = scopeFactory;
+            _options = options;
         }
 
         private ITelegramBotClient BotClient { set; get; }
-        private User botUser { get; set; }
+
+        public event EventHandler<string> OnCallbackSuccessMessage;
+        public event EventHandler<string> OnCallbackErrorMessage;
 
         private async Task<WebProxy> TryConnectWithProxies(IEnumerable<WebProxy> webProxies)
         {
             foreach (var proxy in webProxies)
             {
-                Console.WriteLine($"Connecting to telegram bot with proxy: {proxy.Address.Host}:{proxy.Address.Port}...");
+                InvokeSuccessEvent($"Connecting to telegram bot with proxy: {proxy.Address.Host}:{proxy.Address.Port}...");
                 try
                 {
                     await InitTelegramBot(proxy);
@@ -40,35 +41,38 @@ namespace TelegramBot
                 }
                 catch
                 {
-                    Console.WriteLine($"Proxy failed: {proxy.Address.Host}:{proxy.Address.Port}");
+                    InvokeErrorEvent($"Proxy failed: {proxy.Address.Host}:{proxy.Address.Port}");
                 }
             }
             return null;
         }
 
-        private async Task InitTelegramBot(WebProxy proxy = null)
+        private async Task<User> InitTelegramBot(WebProxy proxy = null)
         {
             using var scope = _scopeFactory.CreateScope();
-            var token = scope.ServiceProvider.GetRequiredService<IConfiguration>().GetValue<string>("TelegramBotToken");
-            BotClient = new TelegramBotClient(token, proxy ?? null);
-            BotClient.Timeout = TimeSpan.FromSeconds(5);
-            botUser = await BotClient.GetMeAsync();
-            Console.WriteLine($"Telegram Bot: {botUser.Username}");
-            Console.WriteLine(proxy != null ? $"Proxy port is good: {proxy.Address.Host}:{proxy.Address.Port}" : "Сonnection success!");
+            BotClient = new TelegramBotClient(_options.Token, proxy ?? null) { Timeout = TimeSpan.FromSeconds(5) };
+
+            User botUser = await BotClient.GetMeAsync();
+
+            var connectMessage = proxy != null ? $"Proxy port is good: {proxy.Address.Host}:{proxy.Address.Port}" : "Сonnection success!";
+            var message = $"Telegram Bot: {botUser.Username}\r\n{connectMessage}";
+
+            InvokeSuccessEvent(message);
             BotClient.OnMessage += TelegramBotClient_OnMessage;
             BotClient.StartReceiving();
+            return botUser;
         }
 
         public async Task StartAsync()
         {
+            var botUser = default(User);
             try
             {
-                await InitTelegramBot();
+                botUser = await InitTelegramBot();
             }
             catch (Exception ex)
             {
-                Console.WriteLine("Connection error. Perhaps the telegram is blocked in your location.");
-                Console.WriteLine($"{ex.Message}\r\n{ex.StackTrace}");
+                InvokeErrorEvent($"{ex.Message}\r\n{ex.StackTrace}");
             }
 
             if (botUser == null)
@@ -89,11 +93,10 @@ namespace TelegramBot
             try
             {
                 User userFrom = e?.Message?.From;
-                Console.WriteLine($@"Message from User.
-Login: {userFrom?.Username} 
-First Name {userFrom?.FirstName}
-Last Name: {userFrom?.LastName}
-Message: {e?.Message?.Text}");
+
+                var logMessage = GetUserFromMessage(userFrom?.Username, userFrom?.FirstName, userFrom?.LastName, e?.Message?.Text);
+
+                InvokeSuccessEvent(logMessage);
                 TelegramBotClient botClient = sender as TelegramBotClient;
                 if (e.Message.Type == Telegram.Bot.Types.Enums.MessageType.Text)
                 {
@@ -105,25 +108,32 @@ Message: {e?.Message?.Text}");
                 {
                     await botClient.SendTextMessageAsync(e.Message?.Chat, "Я принимаю только текстовые сообщения для шифрования!");
                 }
-                /*string message = e?.Message?.Text?.ToLower()?.Trim();
-                if (message == @"/start")
-                    await botClient.SendTextMessageAsync(e?.Message?.Chat, "test message");
-                else if (message.Contains("hello") || message.Contains("привет"))
-                    await botClient.SendTextMessageAsync(e?.Message?.Chat, "Привет, я кароч бот, который написан на .Net Core! Я слегка тупой, но здАроваться по русски можууу!");
-                else
-                {
-                    var fc = new FeistelCipherClassic();
-                    var result = fc.CryptText(e?.Message?.Text);
-                    await botClient.SendTextMessageAsync(e?.Message?.Chat, result);
-                }*/
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
-                Console.WriteLine($"{ex.Message}\r\n{ex.StackTrace}");
+                InvokeErrorEvent($"{ex.Message}\r\n{ex.StackTrace}");
             }
 
         }
 
-        
+        public void StopAsync()
+        {
+            BotClient.StopReceiving();
+        }
+
+        private void InvokeErrorEvent(string message)
+        {
+            _options.CallbackErrorMessage?.Invoke(this, message);
+            OnCallbackErrorMessage?.Invoke(this, message);
+        }
+
+        private void InvokeSuccessEvent(string message)
+        {
+            _options.CallbackSuccessMessage?.Invoke(this, message);
+            OnCallbackSuccessMessage?.Invoke(this, message);
+        }
+
+        private string GetUserFromMessage(string userName, string firstName, string lastName, string text) =>
+            $"Message from User.\r\nLogin: {userName}\r\nFirst Name {firstName}\r\nLast Name: {lastName}\r\nMessage: {text}";
     }
 }

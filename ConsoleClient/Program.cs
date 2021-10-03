@@ -12,15 +12,12 @@ using System.Text;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using TelegramBot.Services;
-using TelegramBot.Services.Interfaces;
 using Microsoft.Extensions.Hosting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
-using FeistelCipher;
-using ProxiesTelegram;
+using TelegramBot;
 
-namespace TelegramBot
+namespace ConsoleClient
 {
     class Program
     {
@@ -31,8 +28,6 @@ namespace TelegramBot
             Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
             try
             {
-                //await serviceProvider.GetRequiredService<TelegramServer>().StartAsync();
-
                 await RunConsoleHost(args);
             }
             catch(Exception ex)
@@ -48,18 +43,18 @@ namespace TelegramBot
             {
                 var config = hostContext.Configuration;
                 var connectionDb = config.GetConnectionString("DefaultConnection");
+                var token = config["TelegramBotToken"];
                 var key = config["Key"];
                 var site = config["Site"];
-                services.AddProxiesTelegram(opt =>
-                {
-                    opt.ConnectionStringDb = connectionDb;
-                    opt.Site = site;
-                })
+                services
                     .AddHostedService<AppHostedService>()
-                    .AddSingleton<TelegramServer>()
-                    .AddTransient<ITextCommand, TextCommand>()
-                    .AddFeistelSipher(key);
-                    //.AddTransient<IFeistelSipher, FeistelCipherClassic>(sv => new FeistelCipherClassic(Encoding.GetEncoding(1251).GetBytes(key)));
+                    .AddTelegramBotServices(new TelegramBotOptions
+                    {
+                        ConnectionStringProxyDb = connectionDb,
+                        Token = token,
+                        KeySipher = key,
+                        ProxySite = site
+                    });
             })
             .RunConsoleAsync();
         }

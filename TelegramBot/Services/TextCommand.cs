@@ -1,6 +1,7 @@
 ﻿using FeistelCipher;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using TelegramBot.Services.Interfaces;
 
@@ -17,8 +18,9 @@ namespace TelegramBot.Services
             {
                 return "Не корректная команда";
             }
-            string cmd = message.Trim().ToLower();
-            if(cmd == "/start" || cmd == "/test" || cmd == "/connect")
+            string cmd = message;
+            var welcomeCommands = GetWelcomeCommands();
+            if(welcomeCommands.Any(c => c.Equals(cmd, StringComparison.OrdinalIgnoreCase)))
             {
                 return GetStartMessage();
             }
@@ -41,5 +43,12 @@ namespace TelegramBot.Services
         private string GetCommands() => @"/start - Начало диалога с ботом, вступительное сообщение;
 /test, /connect - эти команды аналогичны команде /start, предназначены для проверки соединения с ботом;
 [ваш текст] - текст который необходимо зашифровать";
+
+        private string[] GetWelcomeCommands() => new string[]
+        {
+            "/start", "-start",
+            "/test", "-test",
+            "/connect", "-connect"
+        };
     }
 }
