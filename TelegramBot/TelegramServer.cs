@@ -1,5 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using ProxiesTelegram;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -10,8 +12,6 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Telegram.Bot;
 using Telegram.Bot.Types;
-using TelegramBot.dbo;
-using TelegramBot.dbo.Models;
 using TelegramBot.Services;
 using TelegramBot.Services.Interfaces;
 
@@ -19,16 +19,14 @@ namespace TelegramBot
 {
     internal class TelegramServer
     {
-        private readonly IServiceProvider _serviceProvider;
-        public TelegramServer(IServiceProvider serviceProvider)
+        private readonly IServiceScopeFactory _scopeFactory;
+        public TelegramServer(IServiceScopeFactory scopeFactory)
         {
-            _serviceProvider = serviceProvider;
+            _scopeFactory = scopeFactory;
         }
 
-        public ITelegramBotClient BotClient { private set; get; }
+        private ITelegramBotClient BotClient { set; get; }
         private User botUser { get; set; }
-
-        private const string token = Secret.Token;
 
         private async Task<WebProxy> TryConnectWithProxies(IEnumerable<WebProxy> webProxies)
         {
@@ -50,19 +48,15 @@ namespace TelegramBot
 
         private async Task InitTelegramBot(WebProxy proxy = null)
         {
+            using var scope = _scopeFactory.CreateScope();
+            var token = scope.ServiceProvider.GetRequiredService<IConfiguration>().GetValue<string>("TelegramBotToken");
             BotClient = new TelegramBotClient(token, proxy ?? null);
             BotClient.Timeout = TimeSpan.FromSeconds(5);
             botUser = await BotClient.GetMeAsync();
             Console.WriteLine($"Telegram Bot: {botUser.Username}");
             Console.WriteLine(proxy != null ? $"Proxy port is good: {proxy.Address.Host}:{proxy.Address.Port}" : "Сonnection success!");
             BotClient.OnMessage += TelegramBotClient_OnMessage;
-            BotClient.MakingApiRequest += BotClient_MakingApiRequest;
             BotClient.StartReceiving();
-        }
-
-        private void BotClient_MakingApiRequest(object sender, Telegram.Bot.Args.ApiRequestEventArgs e)
-        {
-            
         }
 
         public async Task StartAsync()
@@ -71,15 +65,16 @@ namespace TelegramBot
             {
                 await InitTelegramBot();
             }
-            catch
+            catch (Exception ex)
             {
                 Console.WriteLine("Connection error. Perhaps the telegram is blocked in your location.");
+                Console.WriteLine($"{ex.Message}\r\n{ex.StackTrace}");
             }
 
             if (botUser == null)
             {
-                using var scope = _serviceProvider.CreateScope();
-                var proxyService = scope.ServiceProvider.GetRequiredService<ProxyService>();
+                using var scope = _scopeFactory.CreateScope();
+                var proxyService = scope.ServiceProvider.GetRequiredService<IProxyService>();
                 var goodProxy = await TryConnectWithProxies(await proxyService.GetExistingProxies()) ?? await TryConnectWithProxies(proxyService.GetProxiesFromSite());
                 if (goodProxy != null)
                 {
@@ -102,7 +97,7 @@ Message: {e?.Message?.Text}");
                 TelegramBotClient botClient = sender as TelegramBotClient;
                 if (e.Message.Type == Telegram.Bot.Types.Enums.MessageType.Text)
                 {
-                    using var scope = _serviceProvider.CreateScope();
+                    using var scope = _scopeFactory.CreateScope();
                     var cmd = scope.ServiceProvider.GetRequiredService<ITextCommand>();
                     await botClient.SendTextMessageAsync(e.Message?.Chat, cmd.GetText(e.Message.Text));
                 }

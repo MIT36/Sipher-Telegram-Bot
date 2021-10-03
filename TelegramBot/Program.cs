@@ -12,9 +12,13 @@ using System.Text;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using TelegramBot.dbo;
 using TelegramBot.Services;
 using TelegramBot.Services.Interfaces;
+using Microsoft.Extensions.Hosting;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using FeistelCipher;
+using ProxiesTelegram;
 
 namespace TelegramBot
 {
@@ -27,21 +31,37 @@ namespace TelegramBot
             Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
             try
             {
-                var serviceProvider = new ServiceCollection()
-                    .AddDbContext<SQLiteContext>()
-                    .AddSingleton<TelegramServer>()
-                    .AddTransient<ProxyService>()
-                    .AddTransient<ITextCommand, TextCommand>()
-                    .AddTransient<IFeistelSipher, FeistelCipherClassic>(sv => new FeistelCipherClassic(Encoding.GetEncoding(1251).GetBytes(Secret.Key)))
-                    .BuildServiceProvider();
-                await serviceProvider.GetRequiredService<TelegramServer>().StartAsync();
-                Console.ReadKey();
-                //test commit
+                //await serviceProvider.GetRequiredService<TelegramServer>().StartAsync();
+
+                await RunConsoleHost(args);
             }
             catch(Exception ex)
             {
                 Console.WriteLine($"{ex.Message}\r\n{ex.StackTrace}");
             }
+        }
+
+        public static async Task RunConsoleHost(string[] args)
+        {
+            await Host.CreateDefaultBuilder(args)
+            .ConfigureServices((hostContext, services) =>
+            {
+                var config = hostContext.Configuration;
+                var connectionDb = config.GetConnectionString("DefaultConnection");
+                var key = config["Key"];
+                var site = config["Site"];
+                services.AddProxiesTelegram(opt =>
+                {
+                    opt.ConnectionStringDb = connectionDb;
+                    opt.Site = site;
+                })
+                    .AddHostedService<AppHostedService>()
+                    .AddSingleton<TelegramServer>()
+                    .AddTransient<ITextCommand, TextCommand>()
+                    .AddFeistelSipher(key);
+                    //.AddTransient<IFeistelSipher, FeistelCipherClassic>(sv => new FeistelCipherClassic(Encoding.GetEncoding(1251).GetBytes(key)));
+            })
+            .RunConsoleAsync();
         }
     }
 }

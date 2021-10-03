@@ -2,11 +2,11 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using TelegramBot.Services.Interfaces;
+using System.Threading.Tasks;
 
-namespace TelegramBot.Services
+namespace FeistelCipher
 {
-    class FeistelCipherClassic : IFeistelSipher
+    internal class FeistelCipherClassic : IFeistelSipher
     {
         private enum Direction
         {
@@ -34,9 +34,9 @@ namespace TelegramBot.Services
             }
         }
 
-        public FeistelCipherClassic ()
+        public FeistelCipherClassic()
         {
-            //_key = GenerateKey(4);
+            _key = GenerateKey(4);
             _blockSize = _key.Length * 2;
         }
 
@@ -44,7 +44,10 @@ namespace TelegramBot.Services
         {
             if (key.Length % 2 != 0)
             {
-                throw new Exception("Key size must be multiple of 2 size!");
+                var list = key.ToList();
+                list.Add(0);
+                _key = list.ToArray();
+                //throw new Exception("Key size must be multiple of 2 size!");
             }
             _key = key;
             _blockSize = key.Length * 2;
@@ -143,7 +146,7 @@ namespace TelegramBot.Services
         byte[] MultiplicationMod2(byte[] array1, byte[] array2)
         {
             var result = new byte[array1.Length];
-            for(uint i = 0; i < result.Length; i++)
+            for (uint i = 0; i < result.Length; i++)
             {
                 result[i] = (byte)((array1[i] + array2[i]) % (Math.Pow(2, _blockSize) + 1));
             }
@@ -153,7 +156,7 @@ namespace TelegramBot.Services
         byte[] XOR(byte[] array1, byte[] array2)
         {
             var result = new byte[array1.Length];
-            for(uint i = 0; i < result.Length; i++)
+            for (uint i = 0; i < result.Length; i++)
             {
                 result[i] = (byte)(array1[i] ^ array2[i]);
             }
@@ -163,7 +166,7 @@ namespace TelegramBot.Services
         byte[] Inverse(byte[] array)
         {
             var result = new byte[array.Length];
-            for(uint i = 0; i < result.Length; i++)
+            for (uint i = 0; i < result.Length; i++)
             {
                 result[i] = (byte)~array[i];
             }
@@ -174,11 +177,11 @@ namespace TelegramBot.Services
         {
             var result = new byte[array.Length];
             Array.Copy(array, result, array.Length);
-            if(direction == Direction.Left)
+            if (direction == Direction.Left)
             {
                 bool tempByte = false;
                 bool newTempByte;
-                for(int i = result.Length - 1; i >= 0; i--)
+                for (int i = result.Length - 1; i >= 0; i--)
                 {
                     newTempByte = GetBit(result[i], 7);
                     result[i] = (byte)(result[i] << 1);
@@ -190,7 +193,7 @@ namespace TelegramBot.Services
             {
                 bool tempByte = false;
                 bool newTempByte;
-                for(int i = 0; i < result.Length; i++)
+                for (int i = 0; i < result.Length; i++)
                 {
                     newTempByte = GetBit(result[i], 0);
                     result[i] = (byte)(result[i] >> 1);
@@ -206,7 +209,7 @@ namespace TelegramBot.Services
             count %= (byte)(array.Length * 8);
             var result = new byte[array.Length];
             Array.Copy(array, result, array.Length);
-            while(count > 8)
+            while (count > 8)
             {
                 result = PerformCycleShift(result, 8, direction);
                 count -= 8;
@@ -217,31 +220,31 @@ namespace TelegramBot.Services
 
         byte[] PerformCycleShift(byte[] array, byte count, Direction direction)
         {
-                bool[] tempBits;
-                bool[] newTempBits;
-                if (direction == Direction.Left)
+            bool[] tempBits;
+            bool[] newTempBits;
+            if (direction == Direction.Left)
+            {
+                tempBits = SaveBits(array[0], count, direction);
+                for (int i = array.Length - 1; i >= 0; i--)
                 {
-                    tempBits = SaveBits(array[0], count, direction);
-                    for (int i = array.Length - 1; i >= 0; i--)
-                    {
-                        newTempBits = SaveBits(array[i], count, direction);
-                        array[i] = (byte)(array[i] << count);
-                        PutBits(ref array[i], tempBits, direction);
-                        tempBits = newTempBits;
-                    }
+                    newTempBits = SaveBits(array[i], count, direction);
+                    array[i] = (byte)(array[i] << count);
+                    PutBits(ref array[i], tempBits, direction);
+                    tempBits = newTempBits;
                 }
-                else
+            }
+            else
+            {
+                tempBits = SaveBits(array[array.Length - 1], count, direction);
+                for (int i = 0; i < array.Length; i++)
                 {
-                    tempBits = SaveBits(array[array.Length - 1], count, direction);
-                    for (int i = 0; i < array.Length; i++)
-                    {
-                        newTempBits = SaveBits(array[i], count, direction);
-                        array[i] = (byte)(array[i] >> count);
-                        PutBits(ref array[i], tempBits, direction);
-                        tempBits = newTempBits;
-                    }
+                    newTempBits = SaveBits(array[i], count, direction);
+                    array[i] = (byte)(array[i] >> count);
+                    PutBits(ref array[i], tempBits, direction);
+                    tempBits = newTempBits;
                 }
-                return array;
+            }
+            return array;
         }
 
         void PutBits(ref byte currentByte, bool[] savedBits, Direction direction)
@@ -292,5 +295,6 @@ namespace TelegramBot.Services
             random.NextBytes(result);
             return result;
         }
+
     }
 }

@@ -1,4 +1,5 @@
-﻿using System;
+﻿using FeistelCipher;
+using System;
 using System.Collections.Generic;
 using System.Text;
 using TelegramBot.Services.Interfaces;

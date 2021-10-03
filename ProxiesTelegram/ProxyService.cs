@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
+using ProxiesTelegram.dbo;
+using ProxiesTelegram.dbo.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -7,18 +8,17 @@ using System.Net;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using TelegramBot.dbo;
-using TelegramBot.dbo.Models;
-using TelegramBot.Services.Interfaces;
 
-namespace TelegramBot.Services
+namespace ProxiesTelegram
 {
-    class ProxyService
+    internal class ProxyService : IProxyService
     {
-        private readonly SQLiteContext dbContext;
-        public ProxyService(SQLiteContext dbContext)
+        private readonly ProxyDbContext _db;
+        private readonly string _site;
+        public ProxyService(string site, ProxyDbContext dbContext)
         {
-            this.dbContext = dbContext;
+            _site = site;
+            _db = dbContext;
         }
         public IEnumerable<WebProxy> GetProxiesFromSite()
         {
@@ -26,7 +26,7 @@ namespace TelegramBot.Services
             using (WebClient client = new WebClient())
             {
                 client.Headers.Add(HttpRequestHeader.UserAgent, "1");
-                html = client.DownloadString(Secret.Site);
+                html = client.DownloadString(_site);
             }
 
             var list = new List<WebProxy>();
@@ -50,7 +50,7 @@ namespace TelegramBot.Services
 
         public async Task<IEnumerable<WebProxy>> GetExistingProxies()
         {
-            var dbProxies = await dbContext.Proxies
+            var dbProxies = await _db.Proxies
                     .OrderByDescending(pr => pr.LastConnection)
                     .ToListAsync();
             return dbProxies.Select(pr => new WebProxy(pr.Host, pr.Port));
@@ -58,15 +58,15 @@ namespace TelegramBot.Services
 
         public async Task SaveProxy(string host, int port)
         {
-            var dbProxy = await dbContext.Proxies.FirstOrDefaultAsync(pr => pr.Host == host && pr.Port == port);
+            var dbProxy = await _db.Proxies.SingleOrDefaultAsync(pr => pr.Host == host && pr.Port == port);
             if (dbProxy != null)
             {
                 dbProxy.LastConnection = DateTime.Now;
-                dbContext.Update(dbProxy);
+                _db.Update(dbProxy);
             }
             else
             {
-                await dbContext.Proxies.AddAsync(new Proxy
+                await _db.Proxies.AddAsync(new Proxy
                 {
                     Id = Guid.NewGuid(),
                     Host = host,
@@ -74,7 +74,7 @@ namespace TelegramBot.Services
                     LastConnection = DateTime.Now
                 });
             }
-            await dbContext.SaveChangesAsync();
+            await _db.SaveChangesAsync();
         }
     }
 }

@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 
-namespace TelegramBot.dbo.Models
+namespace ProxiesTelegram.dbo.Models
 {
     public class Proxy
     {
