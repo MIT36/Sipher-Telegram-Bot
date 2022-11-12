@@ -7,6 +7,10 @@ using System.Threading.Tasks;
 
 namespace ProxiesTelegram
 {
+    /// <summary>
+    /// Proxy service is used if telegram is blocked. 
+    /// Parse Ip addressed from specified site and saves the correct once in database
+    /// </summary>
     public interface IProxyService
     {
         Task<IEnumerable<WebProxy>> GetProxiesFromSite();

@@ -75,6 +75,7 @@ namespace TelegramBot
                 InvokeErrorEvent($"{ex.Message}\r\n{ex.StackTrace}");
             }
 
+            // For Russia, when telegram was blocked in 2018
             if (botUser == null)
             {
                 using var scope = _scopeFactory.CreateScope();
