@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
+using System.Net.Http;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -20,29 +21,25 @@ namespace ProxiesTelegram
             _site = site;
             _db = dbContext;
         }
-        public IEnumerable<WebProxy> GetProxiesFromSite()
+        public async Task<IEnumerable<WebProxy>> GetProxiesFromSite()
         {
             string html;
-            using (WebClient client = new WebClient())
+            using (HttpClient client = new HttpClient())
             {
-                client.Headers.Add(HttpRequestHeader.UserAgent, "1");
-                html = client.DownloadString(_site);
+                client.DefaultRequestHeaders.UserAgent.ParseAdd("1");
+                html = await client.GetStringAsync(_site);
             }
 
             var list = new List<WebProxy>();
 
-            Regex regex = new Regex(@"\d+(.)\d+(.)\d+(.)\d+(\<\/td><td>)\d+");
-            MatchCollection matches = regex.Matches(html);
-            if (matches.Count > 0)
+            Regex regex = new Regex(@"\b(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\b");
+            var ipAddresses = regex.Matches(html).Select(m => m.Value).Distinct().ToList();
+            if (ipAddresses.Count > 0)
             {
-                foreach (Match item in matches)
+                foreach (var item in ipAddresses)
                 {
-                    string hostPort = item.Value.Replace(@"</td><td>", ":");
-                    if (hostPort.Contains('.'))
-                    {
-                        list.Add(new WebProxy(hostPort));
-                        Console.WriteLine(hostPort);
-                    }
+                    list.Add(new WebProxy(item));
+                    Console.WriteLine(item);
                 }
             }
             return list;

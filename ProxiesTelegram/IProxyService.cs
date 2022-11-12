@@ -9,7 +9,7 @@ namespace ProxiesTelegram
 {
     public interface IProxyService
     {
-        IEnumerable<WebProxy> GetProxiesFromSite();
+        Task<IEnumerable<WebProxy>> GetProxiesFromSite();
 
         Task<IEnumerable<WebProxy>> GetExistingProxies();
 

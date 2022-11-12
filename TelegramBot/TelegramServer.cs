@@ -79,7 +79,7 @@ namespace TelegramBot
             {
                 using var scope = _scopeFactory.CreateScope();
                 var proxyService = scope.ServiceProvider.GetRequiredService<IProxyService>();
-                var goodProxy = await TryConnectWithProxies(await proxyService.GetExistingProxies()) ?? await TryConnectWithProxies(proxyService.GetProxiesFromSite());
+                var goodProxy = await TryConnectWithProxies(await proxyService.GetExistingProxies()) ?? await TryConnectWithProxies(await proxyService.GetProxiesFromSite());
                 if (goodProxy != null)
                 {
                     await proxyService.SaveProxy(goodProxy.Address.Host, goodProxy.Address.Port);
