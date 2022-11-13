@@ -16,12 +16,12 @@ namespace ConsoleClient
         private readonly ILogger _logger;
         private readonly ITelegramServer _telegramServer;
 
-        public AppHostedService(ILoggerFactory loggerFactory, ITelegramServer telegramServer)
+        public AppHostedService(ILoggerFactory loggerFactory, ITelegramServer telegramServer, TelegramServerOptions options)
         {
             _telegramServer = telegramServer;
             _logger = loggerFactory.CreateLogger(GetType());
-            _telegramServer.OnCallbackSuccessMessage += OnSuccessMessage;
-            _telegramServer.OnCallbackErrorMessage += OnCallbackErrorMessage;
+            options.CallbackSuccessMessage = OnSuccessMessage;
+            options.CallbackErrorMessage = OnCallbackErrorMessage;
         }
 
         private void OnCallbackErrorMessage(object sender, string message)
@@ -43,7 +43,6 @@ namespace ConsoleClient
         public Task StopAsync(CancellationToken cancellationToken)
         {
             _logger.LogInformation("Stop App");
-            _telegramServer.StopAsync();
             return Task.CompletedTask;
         }
     }

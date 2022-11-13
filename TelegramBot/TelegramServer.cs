@@ -4,9 +4,12 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
+using System.Net.Http;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using Telegram.Bot;
+using Telegram.Bot.Exceptions;
 using Telegram.Bot.Types;
 using TelegramBot.Services.Interfaces;
 
@@ -16,7 +19,7 @@ namespace TelegramBot
     {
         private readonly IServiceScopeFactory _scopeFactory;
 
-        private TelegramServerOptions _options;
+        private readonly TelegramServerOptions _options;
 
         public TelegramServer(IServiceScopeFactory scopeFactory, TelegramServerOptions options)
         {
@@ -25,9 +28,6 @@ namespace TelegramBot
         }
 
         private ITelegramBotClient BotClient { set; get; }
-
-        public event EventHandler<string> OnCallbackSuccessMessage;
-        public event EventHandler<string> OnCallbackErrorMessage;
 
         private async Task<WebProxy> TryConnectWithProxies(IEnumerable<WebProxy> webProxies)
         {
@@ -50,7 +50,8 @@ namespace TelegramBot
         private async Task<User> InitTelegramBot(WebProxy proxy = null)
         {
             using var scope = _scopeFactory.CreateScope();
-            BotClient = new TelegramBotClient(_options.Token, proxy ?? null) { Timeout = TimeSpan.FromSeconds(5) };
+
+            BotClient = new TelegramBotClient(_options.Token);
 
             User botUser = await BotClient.GetMeAsync();
 
@@ -58,8 +59,7 @@ namespace TelegramBot
             var message = $"Telegram Bot: {botUser.Username}\r\n{connectMessage}";
 
             InvokeSuccessEvent(message);
-            BotClient.OnMessage += TelegramBotClient_OnMessage;
-            BotClient.StartReceiving();
+            BotClient.StartReceiving(HandleUpdateAsync, HandlePollingErrorAsync);
             return botUser;
         }
 
@@ -89,49 +89,47 @@ namespace TelegramBot
             }
         }
 
-        private async void TelegramBotClient_OnMessage(object sender, Telegram.Bot.Args.MessageEventArgs e)
+        private async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, CancellationToken cancellationToken)
         {
-            try
+            if (update.Type != Telegram.Bot.Types.Enums.UpdateType.Message && update.Type != Telegram.Bot.Types.Enums.UpdateType.EditedMessage)
             {
-                User userFrom = e?.Message?.From;
-
-                var logMessage = GetUserFromMessage(userFrom?.Username, userFrom?.FirstName, userFrom?.LastName, e?.Message?.Text);
-
-                InvokeSuccessEvent(logMessage);
-                TelegramBotClient botClient = sender as TelegramBotClient;
-                if (e.Message.Type == Telegram.Bot.Types.Enums.MessageType.Text)
-                {
-                    using var scope = _scopeFactory.CreateScope();
-                    var cmd = scope.ServiceProvider.GetRequiredService<ITextCommand>();
-                    await botClient.SendTextMessageAsync(e.Message?.Chat, cmd.GetText(e.Message.Text));
-                }
-                else
-                {
-                    await botClient.SendTextMessageAsync(e.Message?.Chat, "Я принимаю только текстовые сообщения для шифрования!");
-                }
-            }
-            catch (Exception ex)
-            {
-                InvokeErrorEvent($"{ex.Message}\r\n{ex.StackTrace}");
+                await botClient.SendTextMessageAsync(update.Message.Chat, "Я принимаю только текстовые сообщения для шифрования!");
+                return;
             }
 
+            var message = update.Message;
+            var userFrom = message.From;
+
+            var logMessage = GetUserFromMessage(userFrom?.Username, userFrom?.FirstName, userFrom?.LastName, message?.Text);
+
+            InvokeSuccessEvent(logMessage);
+
+            using var scope = _scopeFactory.CreateScope();
+            var cmd = scope.ServiceProvider.GetRequiredService<ITextCommand>();
+            await botClient.SendTextMessageAsync(message?.Chat, cmd.GetText(message?.Text));
         }
 
-        public void StopAsync()
+        Task HandlePollingErrorAsync(ITelegramBotClient botClient, Exception exception, CancellationToken cancellationToken)
         {
-            BotClient.StopReceiving();
+            var ErrorMessage = exception switch
+            {
+                ApiRequestException apiRequestException
+                    => $"Telegram API Error:\n[{apiRequestException.ErrorCode}]\n{apiRequestException.Message}",
+                _ => exception.ToString()
+            };
+
+            InvokeErrorEvent(ErrorMessage);
+            return Task.CompletedTask;
         }
 
         private void InvokeErrorEvent(string message)
         {
             _options.CallbackErrorMessage?.Invoke(this, message);
-            OnCallbackErrorMessage?.Invoke(this, message);
         }
 
         private void InvokeSuccessEvent(string message)
         {
             _options.CallbackSuccessMessage?.Invoke(this, message);
-            OnCallbackSuccessMessage?.Invoke(this, message);
         }
 
         private string GetUserFromMessage(string userName, string firstName, string lastName, string text) =>
