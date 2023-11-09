@@ -1,17 +1,7 @@
 ﻿using System;
-using System.Net.Http;
-using Telegram.Bot;
-using MihaZupan;
-using System.Net;
 using System.Threading.Tasks;
-using System.Collections.Generic;
-using System.Text.RegularExpressions;
-using System.IO;
-using System.Linq;
 using System.Text;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;

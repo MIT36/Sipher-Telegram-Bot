@@ -1,11 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+﻿namespace TelegramBot.Services.Interfaces;
 
-namespace TelegramBot.Services.Interfaces
+interface ITextCommand
 {
-    interface ITextCommand
-    {
-        string GetText(string message);
-    }
+    string GetText(string message);
 }
