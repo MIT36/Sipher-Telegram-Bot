@@ -1,4 +1,4 @@
-﻿namespace TelegramBot.Services.Interfaces;
+﻿namespace TelegramBot.Services;
 
 interface ITextCommand
 {

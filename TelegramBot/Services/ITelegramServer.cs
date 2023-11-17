@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Threading.Tasks;
 
-namespace TelegramBot;
+namespace TelegramBot.Services;
 
 public interface ITelegramServer
 {
