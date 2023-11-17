@@ -1,9 +1,8 @@
 ﻿using FeistelCipher;
 using System;
 using System.Linq;
-using TelegramBot.Services.Interfaces;
 
-namespace TelegramBot.Services
+namespace TelegramBot.Services.Implementation
 {
     class TextCommand : ITextCommand
     {
@@ -14,17 +13,12 @@ namespace TelegramBot.Services
         {
             if (string.IsNullOrEmpty(message))
                 return "Не корректная команда";
-            
+
             string cmd = message;
             var welcomeCommands = GetWelcomeCommands();
             if (welcomeCommands.Any(c => c.Equals(cmd, StringComparison.OrdinalIgnoreCase)))
                 return GetStartMessage();
-            
 
-            /*if(message.Length > 2 && message.Substring(0, 2).ToLower() == "/d")
-                {
-                    return sipher.CryptText(message[2..].Trim(), true);
-                }*/
             string result = _sipher.CryptText(message.Trim());
             return $"Encrypted text: {result}\r\n\r\nDecrypted Text: {_sipher.CryptText(result, true)}";
         }

@@ -13,9 +13,5 @@ namespace ProxiesTelegram;
 /// </summary>
 public interface IProxyService
 {
-    Task<IEnumerable<WebProxy>> GetProxiesFromSite();
-
-    Task<IEnumerable<WebProxy>> GetExistingProxies();
-
-    Task SaveProxy(string host, int port);
+    Task<IEnumerable<WebProxy>> GetProxies();
 }

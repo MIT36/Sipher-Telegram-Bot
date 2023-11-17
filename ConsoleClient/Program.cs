@@ -28,25 +28,13 @@ namespace ConsoleClient
 
         public static async Task RunConsoleHost(string[] args)
         {
-            await Host.CreateDefaultBuilder(args)
-            .ConfigureServices((hostContext, services) =>
-            {
-                var config = hostContext.Configuration;
-                var connectionDb = config.GetConnectionString("DefaultConnection");
-                var token = config["TelegramBotToken"];
-                var key = config["Key"];
-                var site = config["Site"];
-                services
-                    .AddHostedService<AppHostedService>()
-                    .AddTelegramBotServices(new TelegramBotOptions
-                    {
-                        ConnectionStringProxyDb = connectionDb,
-                        Token = token,
-                        KeySipher = key,
-                        ProxySite = site
-                    });
-            })
-            .RunConsoleAsync();
+            var builder = Host.CreateApplicationBuilder(args);
+            builder.Services.AddHostedService<AppHostedService>();
+            builder.Services.AddTelegramBotServices(builder.Configuration);
+
+            var host = builder.Build();
+
+            await host.RunAsync();
         }
     }
 }

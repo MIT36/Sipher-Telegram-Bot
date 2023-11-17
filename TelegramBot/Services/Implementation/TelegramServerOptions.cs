@@ -1,16 +1,11 @@
 ﻿using System;
+using Microsoft.Extensions.Configuration;
 
-namespace TelegramBot;
+namespace TelegramBot.Services.Implementation;
 
-public class TelegramBotOptions
+internal class TelegramServerOptions : ITelegramServiceOptions
 {
     public string Token { get; set; }
-
-    public string KeySipher { get; set; }
-
-    public string ConnectionStringProxyDb { get; set; }
-
-    public string ProxySite { get; set; }
 
     public EventHandler<string> CallbackSuccessMessage { get; set; }
 

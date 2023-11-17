@@ -1,49 +1,45 @@
-﻿using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
+﻿using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using System;
-using System.Collections.Generic;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using TelegramBot;
+using TelegramBot.Services;
 
-namespace ConsoleClient
+namespace ConsoleClient;
+
+class AppHostedService : BackgroundService
 {
-    class AppHostedService : IHostedService
+    private readonly ILogger _logger;
+    private readonly ITelegramServer _telegramServer;
+
+    public AppHostedService(ILoggerFactory loggerFactory, ITelegramServer telegramServer, ITelegramServiceOptions options)
     {
-        private readonly ILogger _logger;
-        private readonly ITelegramServer _telegramServer;
+        _telegramServer = telegramServer;
+        _logger = loggerFactory.CreateLogger(GetType());
+        options.CallbackSuccessMessage = OnSuccessMessage;
+        options.CallbackErrorMessage = OnCallbackErrorMessage;
+    }
 
-        public AppHostedService(ILoggerFactory loggerFactory, ITelegramServer telegramServer, TelegramServerOptions options)
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        _logger.LogInformation("Run App");
+        try
         {
-            _telegramServer = telegramServer;
-            _logger = loggerFactory.CreateLogger(GetType());
-            options.CallbackSuccessMessage = OnSuccessMessage;
-            options.CallbackErrorMessage = OnCallbackErrorMessage;
-        }
-
-        private void OnCallbackErrorMessage(object sender, string message)
-        {
-            _logger.LogError(message);
-        }
-
-        private void OnSuccessMessage(object sender, string message)
-        {
-            _logger.LogInformation(message);
-        }
-
-        public async Task StartAsync(CancellationToken cancellationToken)
-        {
-            _logger.LogInformation("Run App");
             await _telegramServer.StartAsync();
         }
-
-        public Task StopAsync(CancellationToken cancellationToken)
+        catch (Exception ex)
         {
-            _logger.LogInformation("Stop App");
-            return Task.CompletedTask;
+            _logger.LogError($"{ex.Source}: {ex.Message}\r\n{ex.StackTrace}");
         }
+    }
+
+    private void OnCallbackErrorMessage(object sender, string message)
+    {
+        _logger.LogError(message);
+    }
+
+    private void OnSuccessMessage(object sender, string message)
+    {
+        _logger.LogInformation(message);
     }
 }

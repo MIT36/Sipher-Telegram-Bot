@@ -46,21 +46,10 @@ internal class FeistelCipherClassic : IFeistelSipher
             var list = key.ToList();
             list.Add(0);
             _key = list.ToArray();
-            //throw new Exception("Key size must be multiple of 2 size!");
         }
         _key = key;
         _blockSize = key.Length * 2;
     }
-
-    /*public FeistelCipherClassic(byte[] key) : this(key.Length)
-    {
-        if(key.Length % 2 != 0)
-        {
-            throw new Exception("Key size must be multiple of 2 size!");
-        }
-        _key = key;
-        _blockSize = key.Length * 2;
-    }*/
 
     public string CryptText(string plainText, bool isDecrypt = false)
     {

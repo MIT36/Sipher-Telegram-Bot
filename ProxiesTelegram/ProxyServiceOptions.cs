@@ -1,4 +1,6 @@
-﻿namespace ProxiesTelegram;
+﻿using Microsoft.Extensions.Configuration;
+
+namespace ProxiesTelegram;
 
 public class ProxyServiceOptions
 {
